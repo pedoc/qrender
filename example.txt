@@ -1,0 +1,20 @@
+# 配置文件示例
+
+# 数据库配置
+DB_HOST=${DB_HOST}
+DB_PORT=${DB_PORT}
+DB_USER=${DB_USER}
+DB_PASSWORD=${DB_PASSWORD}
+
+# 应用配置
+APP_NAME=${APP_NAME}
+APP_ENV=${APP_ENV}
+
+# 调试配置
+{{if DEBUG=="true"}}
+LOG_LEVEL=debug
+ENABLE_TRACING=true
+{{endif}}
+
+# 其他配置
+API_KEY=${API_KEY} 
