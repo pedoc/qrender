@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -106,9 +107,22 @@ func main() {
 	content := string(templateContent)
 
 	// Replace environment variables
+	// First replace ${VAR} format
 	for key, value := range env {
 		content = strings.ReplaceAll(content, "${"+key+"}", value)
 	}
+
+	// Then replace $VAR format
+	// Create a regex to match $VAR but not ${VAR}
+	re := regexp.MustCompile(`\$([a-zA-Z_][a-zA-Z0-9_]*)`)
+	content = re.ReplaceAllStringFunc(content, func(match string) string {
+		// Remove the $ prefix
+		varName := match[1:]
+		if value, exists := env[varName]; exists {
+			return value
+		}
+		return match
+	})
 
 	// Process if conditions
 	lines := strings.Split(content, "\n")
