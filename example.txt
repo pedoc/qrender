@@ -21,7 +21,7 @@
 {{ endif }}
 
 # 字符串比较测试
-{{ if STATUS == "running" }}
+{{ if STATUS  == "running" }}
 状态是运行中
 {{ endif }}
 
@@ -29,7 +29,7 @@
 状态不是错误
 {{ endif }}
 
-# 字符串开头结尾测试
+# 字符串开头结尾测试vs
 {{ if PATH startsWith "/usr" }}
 这是一个系统路径
 {{ endif }}

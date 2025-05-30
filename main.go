@@ -145,11 +145,11 @@ func main() {
 
 	// Print environment variables if verbose mode is enabled
 	if *verbose {
-		fmt.Fprintln(os.Stderr, "Environment variables:")
+		fmt.Println("Environment variables:")
 		for key, value := range env {
-			fmt.Fprintf(os.Stderr, "  %s=%s\n", key, value)
+			fmt.Printf("  %s=%s\n", key, value)
 		}
-		fmt.Fprintln(os.Stderr)
+		fmt.Println()
 	}
 
 	// Prepare output
