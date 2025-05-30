@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -50,10 +51,68 @@ func checkOutputPath(path string) error {
 	return nil
 }
 
+func evaluateCondition(key, operator, value string, env map[string]string) bool {
+	envValue := env[key]
+
+	// 处理字符串特殊操作符
+	switch operator {
+	case "startsWith":
+		return strings.HasPrefix(envValue, value)
+	case "endsWith":
+		return strings.HasSuffix(envValue, value)
+	}
+
+	// 尝试将值转换为数字进行比较
+	envNum, envErr := strconv.ParseFloat(envValue, 64)
+	valueNum, valueErr := strconv.ParseFloat(value, 64)
+
+	// 如果两个值都可以转换为数字，则进行数值比较
+	if envErr == nil && valueErr == nil {
+		switch operator {
+		case "==":
+			return envNum == valueNum
+		case "!=":
+			return envNum != valueNum
+		case ">":
+			return envNum > valueNum
+		case "<":
+			return envNum < valueNum
+		case ">=":
+			return envNum >= valueNum
+		case "<=":
+			return envNum <= valueNum
+		}
+	}
+
+	// 否则进行字符串比较
+	switch operator {
+	case "==":
+		return envValue == value
+	case "!=":
+		return envValue != value
+	case ">":
+		return envValue > value
+	case "<":
+		return envValue < value
+	case ">=":
+		return envValue >= value
+	case "<=":
+		return envValue <= value
+	}
+
+	return false
+}
+
+type ifBlock struct {
+	skipUntilEndif bool
+	lineNumber     int
+}
+
 func main() {
 	// Parse command line arguments
 	templateFile := flag.String("template", "example.txt", "template file path (required)")
 	outputFile := flag.String("output", "", "output file path (default: stdout)")
+	verbose := flag.Bool("verbose", false, "print environment variables (default: false)")
 	flag.Parse()
 
 	// Check template file
@@ -82,6 +141,15 @@ func main() {
 		if len(pair) == 2 {
 			env[pair[0]] = pair[1]
 		}
+	}
+
+	// Print environment variables if verbose mode is enabled
+	if *verbose {
+		fmt.Fprintln(os.Stderr, "Environment variables:")
+		for key, value := range env {
+			fmt.Fprintf(os.Stderr, "  %s=%s\n", key, value)
+		}
+		fmt.Fprintln(os.Stderr)
 	}
 
 	// Prepare output
@@ -126,13 +194,18 @@ func main() {
 
 	// Process if conditions
 	lines := strings.Split(content, "\n")
-	inIfBlock := false
-	skipUntilEndif := false
+	ifStack := make([]ifBlock, 0)
 	lineNumber := 0
 
 	// Compile regex for if statements
 	ifRegex := regexp.MustCompile(`{{\s*if\s+(.+?)\s*}}`)
 	endifRegex := regexp.MustCompile(`{{\s*endif\s*}}`)
+
+	// 支持的操作符
+	operators := []string{
+		"==", "!=", ">=", "<=", ">", "<",
+		"startsWith", "endsWith",
+	}
 
 	for _, line := range lines {
 		lineNumber++
@@ -140,42 +213,65 @@ func main() {
 
 		// Process if statement
 		if ifMatch := ifRegex.FindStringSubmatch(trimmedLine); ifMatch != nil {
-			if inIfBlock {
-				fmt.Fprintf(os.Stderr, "Warning: Line %d: Nested if statements may not work as expected\n", lineNumber)
-			}
-			inIfBlock = true
-
 			// Extract condition
 			condition := strings.TrimSpace(ifMatch[1])
 
-			// Check condition
-			parts := strings.Split(condition, "==")
-			if len(parts) != 2 {
-				fmt.Fprintf(os.Stderr, "Warning: Line %d: Invalid condition statement format\n", lineNumber)
+			// 查找操作符
+			var foundOperator string
+			var parts []string
+
+			for _, op := range operators {
+				if strings.Contains(condition, " "+op+" ") {
+					foundOperator = op
+					parts = strings.Split(condition, " "+op+" ")
+					break
+				}
+			}
+
+			if foundOperator == "" || len(parts) != 2 {
+				fmt.Fprintf(os.Stderr, "Warning: Line %d: Invalid condition statement format. Supported operators: ==, !=, >, <, >=, <=, startsWith, endsWith\n", lineNumber)
 				continue
 			}
 
 			key := strings.TrimSpace(parts[0])
 			value := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
 
-			if env[key] != value {
-				skipUntilEndif = true
+			// 创建新的if块
+			newBlock := ifBlock{
+				skipUntilEndif: !evaluateCondition(key, foundOperator, value, env),
+				lineNumber:     lineNumber,
 			}
+
+			// 如果父级if块被跳过，这个块也应该被跳过
+			if len(ifStack) > 0 && ifStack[len(ifStack)-1].skipUntilEndif {
+				newBlock.skipUntilEndif = true
+			}
+
+			ifStack = append(ifStack, newBlock)
 			continue
 		}
 
 		// Process endif
 		if endifRegex.MatchString(trimmedLine) {
-			if !inIfBlock {
+			if len(ifStack) == 0 {
 				fmt.Fprintf(os.Stderr, "Warning: Line %d: Unmatched endif statement\n", lineNumber)
+			} else {
+				// 弹出最后一个if块
+				ifStack = ifStack[:len(ifStack)-1]
 			}
-			inIfBlock = false
-			skipUntilEndif = false
 			continue
 		}
 
-		// Skip lines in if block if condition is false
-		if inIfBlock && skipUntilEndif {
+		// 检查是否应该跳过当前行
+		shouldSkip := false
+		for _, block := range ifStack {
+			if block.skipUntilEndif {
+				shouldSkip = true
+				break
+			}
+		}
+
+		if shouldSkip {
 			continue
 		}
 
@@ -186,9 +282,11 @@ func main() {
 		}
 	}
 
-	// Check for unclosed if block
-	if inIfBlock {
-		fmt.Fprintf(os.Stderr, "Warning: Unclosed if block at end of file\n")
+	// Check for unclosed if blocks
+	if len(ifStack) > 0 {
+		for _, block := range ifStack {
+			fmt.Fprintf(os.Stderr, "Warning: Unclosed if block starting at line %d\n", block.lineNumber)
+		}
 	}
 
 	// Ensure all content is written
