@@ -1,0 +1,83 @@
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: qrender
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: arm64
+    ldflags:
+      - -s -w
+    binary: qrender
+    main: ./main.go
+
+archives:
+  - id: qrender
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE*
+      - README*
+      - CHANGELOG*
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:'
+      - Merge pull request
+      - Merge branch
+
+# UPX 压缩配置
+post:
+  - cmd: |
+      # 根据操作系统下载对应版本的 UPX
+      if [ "$(uname)" = "Linux" ]; then
+        curl -L https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-amd64_linux.tar.xz -o upx.tar.xz
+        tar xf upx.tar.xz
+        mv upx-4.2.2-amd64_linux/upx .
+        rm -rf upx.tar.xz upx-4.2.2-amd64_linux
+        UPX_CMD="./upx"
+      elif [ "$(uname)" = "Darwin" ]; then
+        curl -L https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-amd64_macOS.tar.xz -o upx.tar.xz
+        tar xf upx.tar.xz
+        mv upx-4.2.2-amd64_macOS/upx .
+        rm -rf upx.tar.xz upx-4.2.2-amd64_macOS
+        UPX_CMD="./upx"
+      else
+        curl -L https://github.com/upx/upx/releases/download/v4.2.2/upx-4.2.2-win64.zip -o upx.zip
+        unzip upx.zip
+        mv upx-4.2.2-win64/upx.exe .
+        rm -rf upx.zip upx-4.2.2-win64
+        UPX_CMD="./upx.exe"
+      fi
+      
+      # 压缩当前平台的二进制文件
+      for file in dist/qrender_*/*; do
+        if [ -f "$file" ]; then
+          echo "Compressing $file..."
+          $UPX_CMD --best --lzma "$file"
+        fi
+      done
+    env:
+      - CGO_ENABLED=0 
