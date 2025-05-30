@@ -130,21 +130,23 @@ func main() {
 	skipUntilEndif := false
 	lineNumber := 0
 
+	// Compile regex for if statements
+	ifRegex := regexp.MustCompile(`{{\s*if\s+(.+?)\s*}}`)
+	endifRegex := regexp.MustCompile(`{{\s*endif\s*}}`)
+
 	for _, line := range lines {
 		lineNumber++
 		trimmedLine := strings.TrimSpace(line)
 
 		// Process if statement
-		if strings.HasPrefix(trimmedLine, "{{if") {
+		if ifMatch := ifRegex.FindStringSubmatch(trimmedLine); ifMatch != nil {
 			if inIfBlock {
 				fmt.Fprintf(os.Stderr, "Warning: Line %d: Nested if statements may not work as expected\n", lineNumber)
 			}
 			inIfBlock = true
 
 			// Extract condition
-			condition := strings.TrimSpace(strings.TrimPrefix(trimmedLine, "{{if"))
-			condition = strings.TrimSuffix(condition, "}}")
-			condition = strings.TrimSpace(condition)
+			condition := strings.TrimSpace(ifMatch[1])
 
 			// Check condition
 			parts := strings.Split(condition, "==")
@@ -163,7 +165,7 @@ func main() {
 		}
 
 		// Process endif
-		if trimmedLine == "{{endif}}" {
+		if endifRegex.MatchString(trimmedLine) {
 			if !inIfBlock {
 				fmt.Fprintf(os.Stderr, "Warning: Line %d: Unmatched endif statement\n", lineNumber)
 			}

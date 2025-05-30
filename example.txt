@@ -21,7 +21,7 @@ ENABLE_TRACING=true
 API_KEY=${API_KEY}
 
 # 额外测试 - if
-{{if DEBUG=="true"}}
+{{  if DEBUG=="true" }}
 LOG_LEVEL=debug
 ENABLE_TRACING=true
-{{endif}}
+{{ endif            }}
