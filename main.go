@@ -54,6 +54,9 @@ func checkOutputPath(path string) error {
 func evaluateCondition(key, operator, value string, env map[string]string) bool {
 	envValue := env[key]
 
+	// Debug output
+	//fmt.Fprintf(os.Stderr, "Evaluating condition: %s %s %s (env value: %s)\n", key, operator, value, envValue)
+
 	// Handle string special operators
 	switch operator {
 	case "startsWith":
@@ -106,6 +109,8 @@ func evaluateCondition(key, operator, value string, env map[string]string) bool 
 type ifBlock struct {
 	skipUntilEndif bool
 	lineNumber     int
+	hasElse        bool
+	hasMatched     bool
 }
 
 func loadEnvFile(filePath string) (map[string]string, error) {
@@ -187,7 +192,9 @@ func main() {
 		for _, e := range os.Environ() {
 			pair := strings.SplitN(e, "=", 2)
 			if len(pair) == 2 {
-				env[pair[0]] = pair[1]
+				key := pair[0]
+				value := pair[1]
+				env[key] = value
 			}
 		}
 	}
@@ -202,6 +209,14 @@ func main() {
 			}
 		}
 		env = filteredEnv
+	}
+
+	//在这里检查env里的值,并且应该移除"和'符号
+	for key, value := range env {
+		// 移除所有引号，包括中间可能出现的引号
+		value = strings.ReplaceAll(value, "\"", "")
+		value = strings.ReplaceAll(value, "'", "")
+		env[key] = value
 	}
 
 	// Print environment variables if verbose mode is enabled
@@ -260,6 +275,8 @@ func main() {
 
 	// Compile regex for if statements
 	ifRegex := regexp.MustCompile(`{{\s*if\s+(.+?)\s*}}`)
+	elseIfRegex := regexp.MustCompile(`{{\s*else\s+if\s+(.+?)\s*}}`)
+	elseRegex := regexp.MustCompile(`{{\s*else\s*}}`)
 	endifRegex := regexp.MustCompile(`{{\s*endif\s*}}`)
 
 	// Supported operators
@@ -298,17 +315,82 @@ func main() {
 			value := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
 
 			// Create new if block
+			conditionResult := evaluateCondition(key, foundOperator, value, env)
 			newBlock := ifBlock{
-				skipUntilEndif: !evaluateCondition(key, foundOperator, value, env),
+				skipUntilEndif: !conditionResult,
 				lineNumber:     lineNumber,
+				hasElse:        false,
+				hasMatched:     conditionResult,
 			}
 
 			// If parent if block is skipped, this block should also be skipped
 			if len(ifStack) > 0 && ifStack[len(ifStack)-1].skipUntilEndif {
 				newBlock.skipUntilEndif = true
+				newBlock.hasMatched = false
 			}
 
 			ifStack = append(ifStack, newBlock)
+			continue
+		}
+
+		// Process else if statement
+		if elseIfMatch := elseIfRegex.FindStringSubmatch(trimmedLine); elseIfMatch != nil {
+			if len(ifStack) == 0 {
+				fmt.Fprintf(os.Stderr, "Warning: Line %d: Unmatched else if statement\n", lineNumber)
+				continue
+			}
+
+			// Extract condition
+			condition := strings.TrimSpace(elseIfMatch[1])
+
+			// Find operator
+			var foundOperator string
+			var parts []string
+
+			for _, op := range operators {
+				if strings.Contains(condition, " "+op+" ") {
+					foundOperator = op
+					parts = strings.Split(condition, " "+op+" ")
+					break
+				}
+			}
+
+			if foundOperator == "" || len(parts) != 2 {
+				fmt.Fprintf(os.Stderr, "Warning: Line %d: Invalid condition statement format. Supported operators: ==, !=, >, <, >=, <=, startsWith, endsWith\n", lineNumber)
+				continue
+			}
+
+			key := strings.TrimSpace(parts[0])
+			value := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
+
+			// Get the current if block
+			currentBlock := &ifStack[len(ifStack)-1]
+			currentBlock.hasElse = true
+
+			// Only evaluate the condition if no previous condition has matched
+			if !currentBlock.hasMatched {
+				conditionResult := evaluateCondition(key, foundOperator, value, env)
+				currentBlock.skipUntilEndif = !conditionResult
+				currentBlock.hasMatched = conditionResult
+			} else {
+				currentBlock.skipUntilEndif = true
+			}
+			continue
+		}
+
+		// Process else statement
+		if elseRegex.MatchString(trimmedLine) {
+			if len(ifStack) == 0 {
+				fmt.Fprintf(os.Stderr, "Warning: Line %d: Unmatched else statement\n", lineNumber)
+				continue
+			}
+
+			// Get the current if block
+			currentBlock := &ifStack[len(ifStack)-1]
+			currentBlock.hasElse = true
+
+			// Only execute else if no previous condition has matched
+			currentBlock.skipUntilEndif = currentBlock.hasMatched
 			continue
 		}
 
