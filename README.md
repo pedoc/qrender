@@ -10,6 +10,9 @@ A simple and flexible template rendering tool that supports environment variable
 - Ability to specify which environment variables to substitute
 - Verbose mode for debugging
 - Flexible output options (stdout or file)
+- Support for nested conditional statements
+- Support for Unicode and special characters
+- Support for empty and whitespace value checks
 
 ## Installation
 
@@ -79,14 +82,57 @@ Database port: ${DB_PORT}
 ```
 {{ if DB_HOST == "localhost" }}
 This is a local development environment
+{{ else if DB_HOST == "staging" }}
+This is a staging environment
+{{ else }}
+This is a production environment
 {{ endif }}
 
 {{ if DB_PORT > 5000 }}
 Using a high port number
+{{ else if DB_PORT > 1000 }}
+Using a medium port number
+{{ else }}
+Using a low port number
 {{ endif }}
 
 {{ if DB_NAME startsWith "test" }}
 This is a test database
+{{ else if DB_NAME startsWith "dev" }}
+This is a development database
+{{ else }}
+This is a production database
+{{ endif }}
+```
+
+3. Nested Conditional Statements:
+```
+{{ if ENV == "dev" }}
+  {{ if DEBUG == "true" }}
+    Debug mode is enabled in development environment
+  {{ endif }}
+{{ endif }}
+```
+
+4. Empty and Whitespace Value Checks:
+```
+{{ if EMPTY_VAR == "" }}
+Variable is empty
+{{ endif }}
+
+{{ if WHITESPACE == "" }}
+Variable contains only whitespace
+{{ endif }}
+```
+
+5. Special Characters and Unicode:
+```
+{{ if SPECIAL_CHARS == "!@#$%^&*()" }}
+Special characters match
+{{ endif }}
+
+{{ if UNICODE == "测试" }}
+Unicode characters match
 {{ endif }}
 ```
 
@@ -120,6 +166,44 @@ qrender -template example.txt -vars "DB_HOST,DB_PORT,DB_NAME"
 5. Debug mode:
 ```bash
 qrender -template example.txt -verbose
+```
+
+6. Nested conditions:
+```bash
+# template.txt
+{{ if ENV == "dev" }}
+  {{ if DEBUG == "true" }}
+    Debug mode in dev
+  {{ endif }}
+{{ endif }}
+
+# Run
+qrender -template template.txt
+```
+
+7. Special characters and Unicode:
+```bash
+# template.txt
+{{ if SPECIAL_CHARS == "!@#$%^&*()" }}
+Special chars OK
+{{ endif }}
+{{ if UNICODE == "测试" }}
+Unicode OK
+{{ endif }}
+
+# Run
+qrender -template template.txt
+```
+
+8. Empty value checks:
+```bash
+# template.txt
+{{ if EMPTY_VAR == "" }}
+Empty var detected
+{{ endif }}
+
+# Run
+qrender -template template.txt
 ```
 
 ## License

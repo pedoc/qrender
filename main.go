@@ -211,9 +211,9 @@ func main() {
 		env = filteredEnv
 	}
 
-	//在这里检查env里的值,并且应该移除"和'符号
+	// Check and clean environment variable values, removing quotes
 	for key, value := range env {
-		// 移除所有引号，包括中间可能出现的引号
+		// Remove all quotes, including those that might appear in the middle
 		value = strings.ReplaceAll(value, "\"", "")
 		value = strings.ReplaceAll(value, "'", "")
 		env[key] = value
