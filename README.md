@@ -7,6 +7,7 @@ A simple and flexible template rendering tool that supports environment variable
 - Environment variable substitution using `$VAR` or `${VAR}` syntax
 - Conditional statements with support for various operators
 - Support for both system environment variables and custom environment files
+- Ability to specify which environment variables to substitute
 - Verbose mode for debugging
 - Flexible output options (stdout or file)
 
@@ -19,7 +20,7 @@ go install github.com/yourusername/qrender@latest
 ## Usage
 
 ```bash
-qrender -template <template_file> [-output <output_file>] [-verbose] [-env <env_file>]
+qrender -template <template_file> [-output <output_file>] [-verbose] [-env <env_file>] [-vars <var1,var2,...>]
 ```
 
 ### Arguments
@@ -28,10 +29,11 @@ qrender -template <template_file> [-output <output_file>] [-verbose] [-env <env_
 - `-output`: Output file path (default: stdout)
 - `-verbose`: Print environment variables (default: false)
 - `-env`: Environment variables file path (optional)
+- `-vars`: Comma-separated list of environment variables to substitute (optional)
 
 ### Environment Variables
 
-You can use environment variables in two ways:
+You can use environment variables in three ways:
 
 1. System environment variables:
 ```bash
@@ -51,6 +53,12 @@ DB_PASSWORD="secret123"
 
 # Run with environment file
 qrender -template example.txt -env vars.env
+```
+
+3. Specify variables to substitute:
+```bash
+# Only substitute specific variables
+qrender -template example.txt -vars "DB_HOST,DB_PORT,DB_NAME"
 ```
 
 The environment file supports:
@@ -104,7 +112,12 @@ qrender -template example.txt -output config.txt
 qrender -template example.txt -env vars.env
 ```
 
-4. Debug mode:
+4. Specify variables to substitute:
+```bash
+qrender -template example.txt -vars "DB_HOST,DB_PORT,DB_NAME"
+```
+
+5. Debug mode:
 ```bash
 qrender -template example.txt -verbose
 ```

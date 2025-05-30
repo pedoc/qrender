@@ -150,6 +150,7 @@ func main() {
 	outputFile := flag.String("output", "", "output file path (default: stdout)")
 	verbose := flag.Bool("verbose", false, "print environment variables (default: false)")
 	envFile := flag.String("env", "", "environment variables file (optional)")
+	vars := flag.String("vars", "", "comma-separated list of environment variables to substitute (optional)")
 	flag.Parse()
 
 	// Check template file
@@ -189,6 +190,18 @@ func main() {
 				env[pair[0]] = pair[1]
 			}
 		}
+	}
+
+	// Filter environment variables if vars flag is set
+	if *vars != "" {
+		filteredEnv := make(map[string]string)
+		for _, v := range strings.Split(*vars, ",") {
+			v = strings.TrimSpace(v)
+			if value, exists := env[v]; exists {
+				filteredEnv[v] = value
+			}
+		}
+		env = filteredEnv
 	}
 
 	// Print environment variables if verbose mode is enabled
