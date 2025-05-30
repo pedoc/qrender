@@ -54,7 +54,7 @@ func checkOutputPath(path string) error {
 func evaluateCondition(key, operator, value string, env map[string]string) bool {
 	envValue := env[key]
 
-	// 处理字符串特殊操作符
+	// Handle string special operators
 	switch operator {
 	case "startsWith":
 		return strings.HasPrefix(envValue, value)
@@ -62,11 +62,11 @@ func evaluateCondition(key, operator, value string, env map[string]string) bool 
 		return strings.HasSuffix(envValue, value)
 	}
 
-	// 尝试将值转换为数字进行比较
+	// Try to convert values to numbers for comparison
 	envNum, envErr := strconv.ParseFloat(envValue, 64)
 	valueNum, valueErr := strconv.ParseFloat(value, 64)
 
-	// 如果两个值都可以转换为数字，则进行数值比较
+	// If both values can be converted to numbers, perform numeric comparison
 	if envErr == nil && valueErr == nil {
 		switch operator {
 		case "==":
@@ -84,7 +84,7 @@ func evaluateCondition(key, operator, value string, env map[string]string) bool 
 		}
 	}
 
-	// 否则进行字符串比较
+	// Otherwise perform string comparison
 	switch operator {
 	case "==":
 		return envValue == value
@@ -108,11 +108,48 @@ type ifBlock struct {
 	lineNumber     int
 }
 
+func loadEnvFile(filePath string) (map[string]string, error) {
+	env := make(map[string]string)
+
+	// Read environment variables file
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read env file: %v", err)
+	}
+
+	// Process line by line
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Parse KEY=VALUE format
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+
+		// Remove quotes
+		value = strings.Trim(value, "\"'")
+
+		env[key] = value
+	}
+
+	return env, nil
+}
+
 func main() {
 	// Parse command line arguments
 	templateFile := flag.String("template", "example.txt", "template file path (required)")
 	outputFile := flag.String("output", "", "output file path (default: stdout)")
 	verbose := flag.Bool("verbose", false, "print environment variables (default: false)")
+	envFile := flag.String("env", "", "environment variables file (optional)")
 	flag.Parse()
 
 	// Check template file
@@ -134,12 +171,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Read all environment variables
-	env := make(map[string]string)
-	for _, e := range os.Environ() {
-		pair := strings.SplitN(e, "=", 2)
-		if len(pair) == 2 {
-			env[pair[0]] = pair[1]
+	// Load environment variables
+	var env map[string]string
+	if *envFile != "" {
+		// Load from environment file
+		env, err = loadEnvFile(*envFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// Load from system environment
+		env = make(map[string]string)
+		for _, e := range os.Environ() {
+			pair := strings.SplitN(e, "=", 2)
+			if len(pair) == 2 {
+				env[pair[0]] = pair[1]
+			}
 		}
 	}
 
@@ -201,7 +249,7 @@ func main() {
 	ifRegex := regexp.MustCompile(`{{\s*if\s+(.+?)\s*}}`)
 	endifRegex := regexp.MustCompile(`{{\s*endif\s*}}`)
 
-	// 支持的操作符
+	// Supported operators
 	operators := []string{
 		"==", "!=", ">=", "<=", ">", "<",
 		"startsWith", "endsWith",
@@ -216,7 +264,7 @@ func main() {
 			// Extract condition
 			condition := strings.TrimSpace(ifMatch[1])
 
-			// 查找操作符
+			// Find operator
 			var foundOperator string
 			var parts []string
 
@@ -236,13 +284,13 @@ func main() {
 			key := strings.TrimSpace(parts[0])
 			value := strings.Trim(strings.TrimSpace(parts[1]), "\"'")
 
-			// 创建新的if块
+			// Create new if block
 			newBlock := ifBlock{
 				skipUntilEndif: !evaluateCondition(key, foundOperator, value, env),
 				lineNumber:     lineNumber,
 			}
 
-			// 如果父级if块被跳过，这个块也应该被跳过
+			// If parent if block is skipped, this block should also be skipped
 			if len(ifStack) > 0 && ifStack[len(ifStack)-1].skipUntilEndif {
 				newBlock.skipUntilEndif = true
 			}
@@ -256,13 +304,13 @@ func main() {
 			if len(ifStack) == 0 {
 				fmt.Fprintf(os.Stderr, "Warning: Line %d: Unmatched endif statement\n", lineNumber)
 			} else {
-				// 弹出最后一个if块
+				// Pop the last if block
 				ifStack = ifStack[:len(ifStack)-1]
 			}
 			continue
 		}
 
-		// 检查是否应该跳过当前行
+		// Check if current line should be skipped
 		shouldSkip := false
 		for _, block := range ifStack {
 			if block.skipUntilEndif {

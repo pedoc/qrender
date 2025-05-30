@@ -1,102 +1,114 @@
-# QRender - Simple Template Rendering Tool
+# QRender
 
-QRender is a lightweight template rendering tool that supports environment variable substitution and conditional statements. It helps you quickly generate configuration files or other files that require dynamic content.
+A simple and flexible template rendering tool that supports environment variable substitution and conditional statements.
 
 ## Features
 
-- Environment Variable Substitution
-  - `${VAR}` format
-  - `$VAR` format
-- Conditional Statements
-  - Numeric comparisons: `>`, `<`, `>=`, `<=`, `==`, `!=`
-  - String comparisons: `==`, `!=`
-  - String operations: `startsWith`, `endsWith`
-- Nested Conditional Statements
-- Multi-line Content Support
-- Empty Value Detection
-- Special Character Support
+- Environment variable substitution using `$VAR` or `${VAR}` syntax
+- Conditional statements with support for various operators
+- Support for both system environment variables and custom environment files
+- Verbose mode for debugging
+- Flexible output options (stdout or file)
+
+## Installation
+
+```bash
+go install github.com/yourusername/qrender@latest
+```
 
 ## Usage
 
 ```bash
-qrender.exe -template <template_file> [-output <output_file>] [-verbose]
+qrender -template <template_file> [-output <output_file>] [-verbose] [-env <env_file>]
 ```
 
-### Parameters
+### Arguments
 
 - `-template`: Template file path (required)
-- `-output`: Output file path (optional, defaults to stdout)
-- `-verbose`: Show environment variables (optional, defaults to false)
+- `-output`: Output file path (default: stdout)
+- `-verbose`: Print environment variables (default: false)
+- `-env`: Environment variables file path (optional)
+
+### Environment Variables
+
+You can use environment variables in two ways:
+
+1. System environment variables:
+```bash
+export DB_HOST=localhost
+export DB_PORT=5432
+qrender -template example.txt
+```
+
+2. Custom environment file:
+```bash
+# vars.env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=mydb
+DB_USER=admin
+DB_PASSWORD="secret123"
+
+# Run with environment file
+qrender -template example.txt -env vars.env
+```
+
+The environment file supports:
+- One variable per line in `KEY=VALUE` format
+- Comments (lines starting with #)
+- Quoted values (automatically unquoted)
+- Empty lines are ignored
+
+### Template Syntax
+
+1. Environment Variable Substitution:
+```
+Database host: $DB_HOST
+Database port: ${DB_PORT}
+```
+
+2. Conditional Statements:
+```
+{{ if DB_HOST == "localhost" }}
+This is a local development environment
+{{ endif }}
+
+{{ if DB_PORT > 5000 }}
+Using a high port number
+{{ endif }}
+
+{{ if DB_NAME startsWith "test" }}
+This is a test database
+{{ endif }}
+```
+
+### Supported Operators
+
+- Comparison: `==`, `!=`, `>`, `<`, `>=`, `<=`
+- String: `startsWith`, `endsWith`
 
 ## Examples
 
-### Template File (example.txt)
-
-```
-# Environment Variable Test
-Current User: ${USER}
-Current Directory: ${PWD}
-Simple Variable: $HOME
-
-# Conditional Tests
-{{ if VERSION > "1.0.0" }}
-Version is greater than 1.0.0
-{{ endif }}
-
-{{ if STATUS == "running" }}
-Status is running
-{{ endif }}
-
-{{ if PATH startsWith "/usr" }}
-This is a system path
-{{ endif }}
-```
-
-### Running the Command
-
+1. Basic usage:
 ```bash
-# Set environment variables
-set VERSION=1.5.0
-set STATUS=running
-set PATH=/usr/local/bin
-
-# Run the program
-qrender.exe -template example.txt -output result.txt -verbose
+qrender -template example.txt
 ```
 
-## Conditional Statement Syntax
+2. Save to file:
+```bash
+qrender -template example.txt -output config.txt
+```
 
-1. Numeric Comparisons:
-   ```
-   {{ if VAR > "1.0.0" }}
-   {{ if VAR < "2.0.0" }}
-   {{ if VAR >= "5" }}
-   {{ if VAR <= "10" }}
-   ```
+3. Use custom environment file:
+```bash
+qrender -template example.txt -env vars.env
+```
 
-2. String Comparisons:
-   ```
-   {{ if VAR == "value" }}
-   {{ if VAR != "value" }}
-   ```
+4. Debug mode:
+```bash
+qrender -template example.txt -verbose
+```
 
-3. String Operations:
-   ```
-   {{ if VAR startsWith "prefix" }}
-   {{ if VAR endsWith "suffix" }}
-   ```
+## License
 
-## Notes
-
-1. Values in conditional statements must be quoted
-2. Operators must have spaces before and after
-3. Nested conditional statements are supported
-4. Non-existent environment variables are replaced with empty strings
-
-## Error Handling
-
-The program will output error messages in the following cases:
-- Template file does not exist
-- Output file cannot be created
-- Invalid conditional statement format
-- Unclosed conditional statement blocks 
+MIT 
