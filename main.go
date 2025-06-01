@@ -12,6 +12,10 @@ import (
 	"strings"
 )
 
+const (
+	Version = "1.0.0"
+)
+
 func checkFileExists(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -156,7 +160,14 @@ func main() {
 	verbose := flag.Bool("verbose", false, "print environment variables (default: false)")
 	envFile := flag.String("env", "", "environment variables file (optional)")
 	vars := flag.String("vars", "", "comma-separated list of environment variables to substitute (optional)")
+	showVersion := flag.Bool("version", false, "show version information")
 	flag.Parse()
+
+	// Show version and exit if requested
+	if *showVersion {
+		fmt.Printf("QRender version %s\n", Version)
+		os.Exit(0)
+	}
 
 	// Check template file
 	if err := checkFileExists(*templateFile); err != nil {

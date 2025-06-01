@@ -34,6 +34,7 @@ qrender -template <template_file> [-output <output_file>] [-verbose] [-env <env_
 - `-verbose`: Print environment variables (default: false)
 - `-env`: Environment variables file path (optional)
 - `-vars`: Comma-separated list of environment variables to substitute (optional)
+- `-version`: Show version information
 
 ### Environment Variables
 
