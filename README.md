@@ -13,6 +13,7 @@ A simple and flexible template rendering tool that supports environment variable
 - Support for nested conditional statements
 - Support for Unicode and special characters
 - Support for empty and whitespace value checks
+- Support for `#@` prefix in conditional statements (compatible with .conf files)
 
 ## Installation
 
@@ -87,6 +88,15 @@ This is a staging environment
 {{ else }}
 This is a production environment
 {{ endif }}
+
+# Support #@ prefix(Use # comment syntax to avoid damaging LSP (plugin) of .conf and similar files)
+#@{{ if DB_HOST == "localhost" }}
+This is a local development environment
+#@{{ else if DB_HOST == "staging" }}
+This is a staging environment
+#@{{ else }}
+This is a production environment
+#@{{ endif }}
 
 {{ if DB_PORT > 5000 }}
 Using a high port number

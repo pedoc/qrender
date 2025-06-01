@@ -274,10 +274,10 @@ func main() {
 	lineNumber := 0
 
 	// Compile regex for if statements
-	ifRegex := regexp.MustCompile(`{{\s*if\s+(.+?)\s*}}`)
-	elseIfRegex := regexp.MustCompile(`{{\s*else\s+if\s+(.+?)\s*}}`)
-	elseRegex := regexp.MustCompile(`{{\s*else\s*}}`)
-	endifRegex := regexp.MustCompile(`{{\s*endif\s*}}`)
+	ifRegex := regexp.MustCompile(`(?:#@)?{{\s*if\s+(.+?)\s*}}`)
+	elseIfRegex := regexp.MustCompile(`(?:#@)?{{\s*else\s+if\s+(.+?)\s*}}`)
+	elseRegex := regexp.MustCompile(`(?:#@)?{{\s*else\s*}}`)
+	endifRegex := regexp.MustCompile(`(?:#@)?{{\s*endif\s*}}`)
 
 	// Supported operators
 	operators := []string{

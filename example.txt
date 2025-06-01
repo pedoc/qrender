@@ -1,7 +1,16 @@
 # 环境变量替换测试
 当前用户: ${USER}
+当前用户: $USER
 当前目录: ${PWD}
 简单变量: $HOME
+
+{{ if USER != "" }}
+if 块 测试 用户: $USER
+{{ endif }}
+
+#@ {{ if USER != "" }}
+if 块 测试2 用户: $USER
+#@ {{ endif }}
 
 # 数字比较测试
 {{ if VERSION > "1.0.0" }}
